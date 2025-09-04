@@ -12,8 +12,8 @@ st.set_page_config(
 # ---- 타이틀 ----
 st.markdown(
     """
-    <h1 style='text-align: center; color: #2C3E50;'>🌍 여행 전문 챗봇</h1>
-    <p style='text-align: center; color: gray;'>
+    <h1 style='text-align: center;'>🌍 여행 전문 챗봇</h1>
+    <p style='text-align: center; opacity:0.7;'>
         한국어 & 영어로 여행 관련 질문만 답변해드립니다.
     </p>
     """,
@@ -78,14 +78,33 @@ if send_clicked and user_input:
 
 # ---- 대화 표시 ----
 st.markdown("### 📜 대화 기록")
+
+user_style = """
+<div style='
+    background: rgba(100, 149, 237, 0.15); 
+    padding: 12px; 
+    border-radius: 12px; 
+    margin-bottom: 10px;
+    color: inherit;
+'>
+<b>👤 사용자:</b><br>{content}
+</div>
+"""
+
+assistant_style = """
+<div style='
+    background: rgba(231, 76, 60, 0.15); 
+    padding: 12px; 
+    border-radius: 12px; 
+    margin-bottom: 10px;
+    color: inherit;
+'>
+<b>🤖 챗봇:</b><br>{content}
+</div>
+"""
+
 for message in st.session_state.messages:
     if message["role"] == "user":
-        st.markdown(
-            f"<div style='background:#E8F6F3; padding:12px; border-radius:12px; margin-bottom:10px;'>"
-            f"<b>👤 사용자:</b><br>{message['content']}</div>", unsafe_allow_html=True
-        )
+        st.markdown(user_style.format(content=message['content']), unsafe_allow_html=True)
     elif message["role"] == "assistant":
-        st.markdown(
-            f"<div style='background:#FDEDEC; padding:12px; border-radius:12px; margin-bottom:10px;'>"
-            f"<b>🤖 챗봇:</b><br>{message['content']}</div>", unsafe_allow_html=True
-        )
+        st.markdown(assistant_style.format(content=message['content']), unsafe_allow_html=True)
