@@ -1,20 +1,30 @@
 import streamlit as st
 from openai import OpenAI
 
-# 앱 제목
-st.title("🌍 ChatGPT 여행 챗봇")
+# ---- 페이지 설정 ----
+st.set_page_config(
+    page_title="여행 챗봇 🌍",
+    page_icon="✈️",
+    layout="centered"
+)
 
-# 사이드바 - API Key 입력
+# ---- 앱 제목 ----
+st.title("🌍 당신의 여행 챗봇")
+st.markdown(
+    "<p style='opacity:0.7;'>한국어 & 영어로 여행 관련 질문만 답변합니다.</p>",
+    unsafe_allow_html=True
+)
+
+# ---- 사이드바 - API 키 입력 ----
 st.sidebar.title("설정")
 
-# 세션 상태에 API 키 저장
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
 
 st.session_state.api_key = st.sidebar.text_input(
     "🔑 OpenAI API Key",
     type="password",
-    value=st.session_state.api_key,
+    value=st.session_state.api_key
 )
 
 if not st.session_state.api_key:
@@ -24,69 +34,90 @@ if not st.session_state.api_key:
 # OpenAI 클라이언트 생성
 client = OpenAI(api_key=st.session_state.api_key)
 
-# 세션 상태에 메시지 저장
+# ---- 세션 상태 초기화 ----
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "system",
             "content": (
                 "기본적으로 한국어와 영어로 제공해 주세요. "
-                "어떤 언어로 질문을 받더라도 한국어와 영어 모두 병기해서 답변해줘. "
-                "당신은 여행에 관한 질문에 답하는 챗봇입니다. "
-                "만약 여행 외의 질문에 대해서는 답변하지 마세요. "
-                "없는 장소, 없는 음식점, 없는 관광지를 추천하지 마세요. "
-                "잘 모르는 내용은 모른다고 답변하세요. "
-                "여행지 추천, 준비물, 문화, 음식 등 다양한 주제에 대해 친절하게 안내하는 챗봇입니다."
-            ),
+                "여행 관련 질문에만 답변하고, 없는 장소/음식점/관광지는 추천하지 마세요. "
+                "잘 모르는 내용은 '모르겠다'라고 답변하세요."
+            )
         }
     ]
 
-# 초기화 버튼
-if st.sidebar.button("대화 초기화"):
-    st.session_state.messages = [
-        {
-            "role": "system",
-            "content": (
-                "기본적으로 한국어와 영어로 제공해 주세요. "
-                "어떤 언어로 질문을 받더라도 한국어와 영어 모두 병기해서 답변해줘. "
-                "당신은 여행에 관한 질문에 답하는 챗봇입니다. "
-                "만약 여행 외의 질문에 대해서는 답변하지 마세요. "
-                "없는 장소, 없는 음식점, 없는 관광지를 추천하지 마세요. "
-                "잘 모르는 내용은 모른다고 답변하세요. "
-                "여행지 추천, 준비물, 문화, 음식 등 다양한 주제에 대해 친절하게 안내하는 챗봇입니다."
-            ),
-        }
-    ]
+# ---- 초기화 버튼 ----
+if st.sidebar.button("🧹 대화 초기화"):
+    st.session_state.messages = st.session_state.messages[:1]
     st.experimental_rerun()
 
-# 사용자 입력창 (엔터로 전송)
-user_input = st.chat_input("메시지를 입력하세요...")
+# ---- 검증 함수 ----
+def validate_response(text: str) -> str:
+    risky_phrases = ["없는", "허구", "가짜", "잘못된"]
+    if any(phrase in text for phrase in risky_phrases):
+        return "⚠️ 답변이 신뢰할 수 없을 수 있습니다. 다른 여행 정보를 물어봐주세요."
+    return text
 
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+# ---- 대화 기록 출력 ----
+st.markdown("### 📜 대화 기록")
 
-    try:
-        # OpenAI API 호출
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=st.session_state.messages,
-        )
-        response_message = response.choices[0].message.content
-        st.session_state.messages.append(
-            {"role": "assistant", "content": response_message}
-        )
-    except Exception as e:
-        st.error("❌ 오류 발생: 올바른 API 키를 입력했는지 확인해주세요.")
-
-# 대화 출력
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(
-            f"<div style='background-color:#e8f0fe; padding:10px; border-radius:10px; margin-bottom:5px;'>👤 {message['content']}</div>",
-            unsafe_allow_html=True,
+            f"""
+            <div style='
+                background-color: rgba(25,118,210,0.15);
+                color: inherit;
+                padding: 10px;
+                border-radius: 10px;
+                margin: 5px 0;
+                text-align: right;
+                max-width: 80%;
+                float: right;
+                clear: both;
+            '>
+                👤 {message['content']}
+            </div>
+            """,
+            unsafe_allow_html=True
         )
     elif message["role"] == "assistant":
         st.markdown(
-            f"<div style='background-color:#f1f3f4; padding:10px; border-radius:10px; margin-bottom:5px;'>🤖 {message['content']}</div>",
-            unsafe_allow_html=True,
+            f"""
+            <div style='
+                background-color: rgba(158,158,158,0.15);
+                color: inherit;
+                padding: 10px;
+                border-radius: 10px;
+                margin: 5px 0;
+                text-align: left;
+                max-width: 80%;
+                float: left;
+                clear: both;
+            '>
+                🤖 {message['content']}
+            </div>
+            """,
+            unsafe_allow_html=True
         )
+
+# ---- 채팅 입력창 (엔터로 전송) ----
+if prompt := st.chat_input("메시지를 입력하세요..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=st.session_state.messages
+        )
+        response_message = validate_response(response.choices[0].message.content)
+        st.session_state.messages.append({"role": "assistant", "content": response_message})
+
+        with st.chat_message("assistant"):
+            st.markdown(response_message)
+
+    except Exception:
+        st.error("❌ 오류 발생: 올바른 API 키를 입력했는지 확인해주세요.")
