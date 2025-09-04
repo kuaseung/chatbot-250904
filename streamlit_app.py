@@ -46,82 +46,48 @@ if "messages" not in st.session_state:
         }
     ]
 
-# ---- 검증 함수 추가 ----
+# ---- 검증 함수 ----
 def validate_response(text: str) -> str:
-    """
-    간단한 후처리 검증 함수.
-    - '모르겠다'를 포함한 답변은 그대로 허용
-    - TODO: 필요시 Google Places API, DB 검증 로직 추가 가능
-    """
     risky_phrases = ["없는", "허구", "가짜", "잘못된"]
     if any(phrase in text for phrase in risky_phrases):
         return "⚠️ 답변이 신뢰할 수 없을 수 있습니다. 다른 여행 정보를 물어봐주세요."
     return text
 
-# ---- 채팅 입력창 ----
-with st.container():
-    st.markdown("### 💬 대화하기")
-    user_input = st.text_input("메시지를 입력하세요...", key="user_input", placeholder="예: 일본 여행 준비물 추천해줘")
-
-    send_col, clear_col = st.columns([4,1])
-    with send_col:
-        send_clicked = st.button("🚀 전송", use_container_width=True)
-    with clear_col:
-        clear_clicked = st.button("🧹 초기화", use_container_width=True)
-
 # ---- 초기화 버튼 ----
-if clear_clicked:
-    st.session_state.messages = st.session_state.messages[:1]  # system 메시지만 유지
-    st.experimental_rerun()
+if st.sidebar.button("🧹 대화 초기화"):
+    st.session_state.clear()
+    st.rerun()   # ✅ 에러 메시지 없이 새로고침
 
-# ---- OpenAI API 호출 ----
-if send_clicked and user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+# ---- 대화 표시 ----
+st.markdown("### 📜 대화 기록")
 
+for message in st.session_state.messages:
+    if message["role"] == "user":
+        with st.chat_message("user"):
+            st.markdown(message["content"])
+    elif message["role"] == "assistant":
+        with st.chat_message("assistant"):
+            st.markdown(message["content"])
+
+# ---- 채팅 입력창 (엔터 전송) ----
+if prompt := st.chat_input("메시지를 입력하세요... (엔터로 전송)"):
+    # 사용자 입력 저장
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # OpenAI 응답 생성
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=st.session_state.messages
         )
         response_message = response.choices[0].message.content
-
-        # ✅ 응답 후 검증
         validated_message = validate_response(response_message)
 
         st.session_state.messages.append({"role": "assistant", "content": validated_message})
+        with st.chat_message("assistant"):
+            st.markdown(validated_message)
 
     except Exception:
         st.error("❌ 오류: API 키가 잘못되었거나 요청에 문제가 있습니다.")
-
-# ---- 대화 표시 ----
-st.markdown("### 📜 대화 기록")
-
-user_style = """
-<div style='
-    background: rgba(100, 149, 237, 0.15); 
-    padding: 12px; 
-    border-radius: 12px; 
-    margin-bottom: 10px;
-    color: inherit;
-'>
-<b>👤 사용자:</b><br>{content}
-</div>
-"""
-
-assistant_style = """
-<div style='
-    background: rgba(231, 76, 60, 0.15); 
-    padding: 12px; 
-    border-radius: 12px; 
-    margin-bottom: 10px;
-    color: inherit;
-'>
-<b>🤖 챗봇:</b><br>{content}
-</div>
-"""
-
-for message in st.session_state.messages:
-    if message["role"] == "user":
-        st.markdown(user_style.format(content=message['content']), unsafe_allow_html=True)
-    elif message["role"] == "assistant":
-        st.markdown(assistant_style.format(content=message['content']), unsafe_allow_html=True)
