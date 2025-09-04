@@ -35,19 +35,28 @@ client = OpenAI(api_key=openai_api_key)
 # ---- 대화 상태 초기화 ----
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "system", "content": (
-            "기본적으로 한국어와 영어로 제공해 주세요."
-            "어떤 언어로 질문을 받더라도 한국어와 영어 모두 병기해서 답변해줘. "
-            "당신은 여행에 관한 질문에 답하는 챗봇입니다. "
-            "만약에 여행 외에 질문에 대해서는 답변하지 마세요. "
-            "모르는 내용은 지어내지 말고, 환각증세를 철저히 없애 주세요. "
-            "여행지 추천, 준비물, 문화, 음식 등 다양한 주제에 대해 친절하게 안내하는 챗봇입니다."
-                "너는 여행 전문가 챗봇이다. 반드시 실제로 존재하는 장소, 음식점, 문화만 안내해라. "
-    "만약 질문에 대한 사실을 모른다면 '잘 모르겠습니다'라고 답해라. "
-    "절대로 없는 장소, 없는 음식점, 허구의 정보를 만들어내지 마라. "
-    "여행 관련 질문에만 답변하며, 한국어와 영어로 모두 제공해라."
-        )}
+        {
+            "role": "system",
+            "content": (
+                "너는 여행 전문가 챗봇이다. 반드시 실제로 존재하는 장소, 음식점, 문화만 안내해야 한다. "
+                "만약 질문에 대한 사실을 모른다면 반드시 '잘 모르겠습니다'라고 답해야 한다. "
+                "절대로 없는 장소, 없는 음식점, 허구의 정보를 만들어내지 마라. "
+                "여행 관련 질문에만 답변하며, 한국어와 영어로 모두 제공해라."
+            )
+        }
     ]
+
+# ---- 검증 함수 추가 ----
+def validate_response(text: str) -> str:
+    """
+    간단한 후처리 검증 함수.
+    - '모르겠다'를 포함한 답변은 그대로 허용
+    - TODO: 필요시 Google Places API, DB 검증 로직 추가 가능
+    """
+    risky_phrases = ["없는", "허구", "가짜", "잘못된"]
+    if any(phrase in text for phrase in risky_phrases):
+        return "⚠️ 답변이 신뢰할 수 없을 수 있습니다. 다른 여행 정보를 물어봐주세요."
+    return text
 
 # ---- 채팅 입력창 ----
 with st.container():
@@ -75,7 +84,11 @@ if send_clicked and user_input:
             messages=st.session_state.messages
         )
         response_message = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": response_message})
+
+        # ✅ 응답 후 검증
+        validated_message = validate_response(response_message)
+
+        st.session_state.messages.append({"role": "assistant", "content": validated_message})
 
     except Exception:
         st.error("❌ 오류: API 키가 잘못되었거나 요청에 문제가 있습니다.")
