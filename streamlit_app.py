@@ -10,17 +10,9 @@ st.set_page_config(page_title="부동산 임장 기록 챗봇 🏢", layout="cen
 st.title("🏠 부동산 임장 기록 챗봇")
 st.markdown("<p style='opacity:0.7;'>방문한 부동산 기록을 체계적으로 CSV에 저장할 수 있습니다.</p>", unsafe_allow_html=True)
 
-# ---- 사이드바: OpenAI API 키 ----
-st.sidebar.title("설정")
-if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
-st.session_state.api_key = st.sidebar.text_input("🔑 OpenAI API Key", type="password", value=st.session_state.api_key)
-if not st.session_state.api_key:
-    st.sidebar.warning("API 키를 입력해야 사용 가능합니다.")
-    st.stop()
-
-client = OpenAI(api_key=st.session_state.api_key)
-
+# ---- OpenAI API 키 ----
+openai_api_key = st.secrets['openai']['API_KEY']
+client = OpenAI(api_key  = openai_api_key)
 # ---- 세션 상태 초기화 ----
 if "messages" not in st.session_state:
     st.session_state.messages = [
