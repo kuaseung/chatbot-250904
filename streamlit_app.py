@@ -331,6 +331,7 @@ elif not visible_indices or current >= max(visible_indices) + 1:
             st.success("✅ 기록이 CSV에 저장되었습니다!")
             st.session_state.saved = True
             st.session_state.edit_index = None
+            st.rerun()
         except Exception as e:
             st.error(f"❌ 저장 중 오류가 발생했습니다: {e}")
         finally:
@@ -373,6 +374,7 @@ elif not visible_indices or current >= max(visible_indices) + 1:
                 st.session_state.saved = True
                 # 편집 종료
                 st.session_state.edit_index = None
+                st.rerun()
             except Exception as e:
                 st.error(f"❌ 저장 중 오류가 발생했습니다: {e}")
 
@@ -397,7 +399,7 @@ elif not visible_indices or current >= max(visible_indices) + 1:
 # ---- CSV 기록 확인 + 필터/검색 + CRUD ----
 st.markdown("### 📊 현재 저장된 기록")
 if os.path.isfile(csv_file):
-    df_records = pd.read_csv(csv_file)
+    df_records = pd.read_csv(csv_file, encoding="utf-8-sig")
 
     with st.expander("🔍 검색/필터"):
         colf1, colf2 = st.columns(2)
