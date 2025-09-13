@@ -10,10 +10,12 @@ st.title("🏠 부동산 임장 기록 챗봇")
 st.markdown("<p style='opacity:0.7;'>방문한 부동산 기록을 체계적으로 CSV에 저장할 수 있습니다.</p>", unsafe_allow_html=True)
 
 # ---- 저장 데이터 보기(빠른 보기) 버튼 ----
+if "show_records_top" not in st.session_state:
+    st.session_state.show_records_top = False  # 상단 빠른 보기 토글 초기화
 col_top_a, col_top_b = st.columns([0.6, 0.4])
 with col_top_b:
     if st.button("📄 저장 데이터 보기", use_container_width=True):
-        st.session_state.show_records_top = not st.session_state.show_records_top
+        st.session_state.show_records_top = not st.session_state.get("show_records_top", False)
         st.rerun()
 
 if st.session_state.show_records_top:
@@ -43,8 +45,6 @@ if "edit_index" not in st.session_state:
     st.session_state.edit_index = None  # 편집 중인 행 인덱스 (없으면 신규)
 if "auto_save" not in st.session_state:
     st.session_state.auto_save = False  # 마지막 단계에서 즉시 저장 트리거
-if "show_records_top" not in st.session_state:
-    st.session_state.show_records_top = False  # 상단 빠른 보기 토글
 
 # ---- CSV 파일 경로 ----
 csv_file = "real_estate_records.csv"
