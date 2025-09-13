@@ -16,6 +16,8 @@ if "step" not in st.session_state:
     st.session_state.step = 0  # 현재 질문 단계 인덱스
 if "answers" not in st.session_state:
     st.session_state.answers = {}  # 사용자가 입력한 값 저장
+if "saved" not in st.session_state:
+    st.session_state.saved = False  # 마지막 저장 완료 상태
 
 # ---- CSV 파일 경로 ----
 csv_file = "real_estate_records.csv"
@@ -58,6 +60,7 @@ questions = [
 if st.sidebar.button("🧹 입력 초기화"):
     st.session_state.step = 0
     st.session_state.answers = {}
+    st.session_state.saved = False
     st.rerun()
 
 # ---- 순차 질문 UI ----
@@ -142,12 +145,19 @@ else:
                         writer.writerow(csv_columns)
                     writer.writerow([str(v) if v is not None else "" for v in row_values])
                 st.success("✅ 기록이 CSV에 저장되었습니다!")
-                # 입력 초기화
-                st.session_state.step = 0
-                st.session_state.answers = {}
-                st.rerun()
+                # 저장 완료 상태 표시 후, 신규 매물 추가 버튼 제공
+                st.session_state.saved = True
             except Exception as e:
                 st.error(f"❌ 저장 중 오류가 발생했습니다: {e}")
+
+    # 저장 완료 후 신규 매물 추가 흐름
+    if st.session_state.saved:
+        st.info("저장이 완료되었습니다. 다른 매물을 계속 추가하시겠습니까?")
+        if st.button("➕ 신규 매물 추가"):
+            st.session_state.step = 0
+            st.session_state.answers = {}
+            st.session_state.saved = False
+            st.rerun()
 
 # ---- CSV 기록 확인 ----
 st.markdown("### 📊 현재 저장된 기록")
