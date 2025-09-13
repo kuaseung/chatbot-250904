@@ -20,6 +20,8 @@ if "saved" not in st.session_state:
     st.session_state.saved = False  # 마지막 저장 완료 상태
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None  # 편집 중인 행 인덱스 (없으면 신규)
+if "auto_save" not in st.session_state:
+    st.session_state.auto_save = False  # 마지막 단계에서 즉시 저장 트리거
 
 # ---- CSV 파일 경로 ----
 csv_file = "real_estate_records.csv"
@@ -203,7 +205,14 @@ if visible_indices and current in visible_indices:
         default_date = prev_val if isinstance(prev_val, datetime.date) else q.get("default", datetime.date.today())
         value = st.date_input(q["label"], value=default_date, key=widget_key)
 
-    col1, col2, col3 = st.columns(3)
+    # 마지막 가시 단계인지 여부
+    is_last_step = (current == max(visible_indices)) if visible_indices else False
+
+    # 버튼 영역 (마지막 단계에서 저장 버튼 추가)
+    if is_last_step:
+        col1, col2, col3, col4 = st.columns(4)
+    else:
+        col1, col2, col3 = st.columns(3)
 
     with col1:
         # 이전 가시 단계로 이동
@@ -250,7 +259,37 @@ if visible_indices and current in visible_indices:
                 else:
                     # 마지막 단계였다면 완료 화면으로 전환되도록 현재를 벗어나게 함
                     st.session_state.step = current + 1
+                    st.session_state.auto_save = True
                 st.rerun()
+    if is_last_step:
+        with col4:
+            if st.button("💾 저장하기(바로)"):
+                # 현재 값 저장 후 유효성 검사, 완료 화면으로 이동하여 자동 저장 진행
+                if isinstance(value, datetime.date):
+                    st.session_state.answers[q["key"]] = value.isoformat()
+                else:
+                    st.session_state.answers[q["key"]] = value
+                # 필수 검증
+                valid = True
+                if q["key"] in required_keys:
+                    v = st.session_state.answers.get(q["key"])
+                    if q["type"] in ("text", "textarea"):
+                        valid = bool(str(v).strip())
+                    elif q["type"] == "number":
+                        try:
+                            valid = float(v) > 0
+                        except Exception:
+                            valid = False
+                    elif q["type"] == "select":
+                        valid = v is not None and str(v).strip() != ""
+                    elif q["type"] == "date":
+                        valid = bool(v)
+                if not valid:
+                    st.warning("필수 항목을 입력해 주세요.")
+                else:
+                    st.session_state.step = current + 1
+                    st.session_state.auto_save = True
+                    st.rerun()
 elif not visible_indices or current >= max(visible_indices) + 1:
     st.success("모든 항목 입력이 완료되었습니다. 아래 요약을 확인하고 CSV로 저장하세요.")
 
@@ -265,6 +304,37 @@ elif not visible_indices or current >= max(visible_indices) + 1:
 
     df_preview = pd.DataFrame([row_values], columns=csv_columns)
     st.dataframe(df_preview, use_container_width=True)
+
+    # 마지막 단계에서 '바로 저장'을 누른 경우 자동 저장 처리
+    if st.session_state.auto_save:
+        try:
+            file_exists = os.path.isfile(csv_file)
+            if st.session_state.edit_index is not None and os.path.isfile(csv_file):
+                df_all = pd.read_csv(csv_file)
+                idx = st.session_state.edit_index
+                if 0 <= idx < len(df_all):
+                    for c, v in zip(csv_columns, row_values):
+                        df_all.at[idx, c] = v
+                    df_all.to_csv(csv_file, index=False, encoding="utf-8-sig")
+                else:
+                    with open(csv_file, "a", newline="", encoding="utf-8-sig") as f:
+                        writer = csv.writer(f)
+                        if not file_exists:
+                            writer.writerow(csv_columns)
+                        writer.writerow([str(v) if v is not None else "" for v in row_values])
+            else:
+                with open(csv_file, "a", newline="", encoding="utf-8-sig") as f:
+                    writer = csv.writer(f)
+                    if not file_exists:
+                        writer.writerow(csv_columns)
+                    writer.writerow([str(v) if v is not None else "" for v in row_values])
+            st.success("✅ 기록이 CSV에 저장되었습니다!")
+            st.session_state.saved = True
+            st.session_state.edit_index = None
+        except Exception as e:
+            st.error(f"❌ 저장 중 오류가 발생했습니다: {e}")
+        finally:
+            st.session_state.auto_save = False
 
     colA, colB = st.columns(2)
     with colA:
