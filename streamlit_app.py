@@ -9,6 +9,27 @@ st.set_page_config(page_title="부동산 임장 기록 챗봇 🏢", layout="cen
 st.title("🏠 부동산 임장 기록 챗봇")
 st.markdown("<p style='opacity:0.7;'>방문한 부동산 기록을 체계적으로 CSV에 저장할 수 있습니다.</p>", unsafe_allow_html=True)
 
+# ---- 저장 데이터 보기(빠른 보기) 버튼 ----
+col_top_a, col_top_b = st.columns([0.6, 0.4])
+with col_top_b:
+    if st.button("📄 저장 데이터 보기", use_container_width=True):
+        st.session_state.show_records_top = not st.session_state.show_records_top
+        st.rerun()
+
+if st.session_state.show_records_top:
+    st.markdown("### 📄 저장된 기록 (빠른 보기)")
+    if os.path.isfile(csv_file):
+        try:
+            df_quick = pd.read_csv(csv_file, encoding="utf-8-sig")
+            st.dataframe(df_quick, use_container_width=True)
+            with open(csv_file, "rb") as f:
+                st.download_button("⬇️ CSV 다운로드", f, file_name=csv_file, mime="text/csv")
+            st.caption("상세 검색/필터/편집은 페이지 하단의 '현재 저장된 기록' 섹션을 이용하세요.")
+        except Exception as e:
+            st.error(f"저장된 기록을 불러오지 못했습니다: {e}")
+    else:
+        st.info("아직 저장된 기록이 없습니다.")
+
 # ---- 대화 흐름(순차 질문) 설정 ----
 # OpenAI 사용 대신 단계별 입력 방식을 사용합니다.
 # ---- 세션 상태 초기화 ----
@@ -22,6 +43,8 @@ if "edit_index" not in st.session_state:
     st.session_state.edit_index = None  # 편집 중인 행 인덱스 (없으면 신규)
 if "auto_save" not in st.session_state:
     st.session_state.auto_save = False  # 마지막 단계에서 즉시 저장 트리거
+if "show_records_top" not in st.session_state:
+    st.session_state.show_records_top = False  # 상단 빠른 보기 토글
 
 # ---- CSV 파일 경로 ----
 csv_file = "real_estate_records.csv"
