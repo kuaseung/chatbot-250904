@@ -9,6 +9,27 @@ st.set_page_config(page_title="부동산 임장 기록 챗봇 🏢", layout="cen
 st.title("🏠 부동산 임장 기록 챗봇")
 st.markdown("<p style='opacity:0.7;'>방문한 부동산 기록을 체계적으로 CSV에 저장할 수 있습니다.</p>", unsafe_allow_html=True)
 
+# ---- 대화 흐름(순차 질문) 설정 ----
+# OpenAI 사용 대신 단계별 입력 방식을 사용합니다.
+# ---- 세션 상태 초기화 ----
+if "step" not in st.session_state:
+    st.session_state.step = 0  # 현재 질문 단계 인덱스
+if "answers" not in st.session_state:
+    st.session_state.answers = {}  # 사용자가 입력한 값 저장
+if "saved" not in st.session_state:
+    st.session_state.saved = False  # 마지막 저장 완료 상태
+if "edit_index" not in st.session_state:
+    st.session_state.edit_index = None  # 편집 중인 행 인덱스 (없으면 신규)
+if "auto_save" not in st.session_state:
+    st.session_state.auto_save = False  # 마지막 단계에서 즉시 저장 트리거
+
+# ---- CSV 파일 경로 ----
+csv_file = "real_estate_records.csv"
+csv_columns = ["날짜","아파트 이름","주소","관심 평형","부동산 유형","건물 연식","층수",
+               "매매가","월세","관리비","대출 가능 여부","교통 편의성","생활 편의시설",
+               "개발 호재","내부 상태","외관 상태","안전/보안","예상 수익률",
+               "공실 가능성","임대 수요","투자 적합성","개인 코멘트"]
+
 # ---- 저장 데이터 보기(빠른 보기) 버튼 ----
 if "show_records_top" not in st.session_state:
     st.session_state.show_records_top = False  # 상단 빠른 보기 토글 초기화
@@ -31,27 +52,6 @@ if st.session_state.show_records_top:
             st.error(f"저장된 기록을 불러오지 못했습니다: {e}")
     else:
         st.info("아직 저장된 기록이 없습니다.")
-
-# ---- 대화 흐름(순차 질문) 설정 ----
-# OpenAI 사용 대신 단계별 입력 방식을 사용합니다.
-# ---- 세션 상태 초기화 ----
-if "step" not in st.session_state:
-    st.session_state.step = 0  # 현재 질문 단계 인덱스
-if "answers" not in st.session_state:
-    st.session_state.answers = {}  # 사용자가 입력한 값 저장
-if "saved" not in st.session_state:
-    st.session_state.saved = False  # 마지막 저장 완료 상태
-if "edit_index" not in st.session_state:
-    st.session_state.edit_index = None  # 편집 중인 행 인덱스 (없으면 신규)
-if "auto_save" not in st.session_state:
-    st.session_state.auto_save = False  # 마지막 단계에서 즉시 저장 트리거
-
-# ---- CSV 파일 경로 ----
-csv_file = "real_estate_records.csv"
-csv_columns = ["날짜","아파트 이름","주소","관심 평형","부동산 유형","건물 연식","층수",
-               "매매가","월세","관리비","대출 가능 여부","교통 편의성","생활 편의시설",
-               "개발 호재","내부 상태","외관 상태","안전/보안","예상 수익률",
-               "공실 가능성","임대 수요","투자 적합성","개인 코멘트"]
 
 # ---- 질문 메타데이터 (csv_columns와 동일 순서 유지를 권장) ----
 scale_opts = ["매우 좋음","좋음","보통","나쁨","모름"]
