@@ -71,7 +71,8 @@ total = len(questions)
 
 if current < total:
     q = questions[current]
-    st.markdown(f"**단계 {current+1}/{total}** — {q['label']}")
+    req_badge = " <span style='color:#d9534f'>(필수)</span>" if q["key"] in required_keys else ""
+    st.markdown(f"**단계 {current+1}/{total}** — {q['label']}{req_badge}", unsafe_allow_html=True)
 
     # 기존 입력값 불러오기
     prev_val = st.session_state.answers.get(q["key"], None)
@@ -112,8 +113,27 @@ if current < total:
                 st.session_state.answers[q["key"]] = value.isoformat()
             else:
                 st.session_state.answers[q["key"]] = value
-            st.session_state.step = min(total, current + 1)
-            st.rerun()
+            # 필수 검증
+            valid = True
+            if q["key"] in required_keys:
+                v = st.session_state.answers.get(q["key"])
+                if q["type"] in ("text", "textarea"):
+                    valid = bool(str(v).strip())
+                elif q["type"] == "number":
+                    # 매매가 등은 0보다 큰 값 권장
+                    try:
+                        valid = float(v) > 0
+                    except Exception:
+                        valid = False
+                elif q["type"] == "select":
+                    valid = v is not None and str(v).strip() != ""
+                elif q["type"] == "date":
+                    valid = bool(v)
+            if not valid:
+                st.warning("필수 항목을 입력해 주세요.")
+            else:
+                st.session_state.step = min(total, current + 1)
+                st.rerun()
 else:
     st.success("모든 항목 입력이 완료되었습니다. 아래 요약을 확인하고 CSV로 저장하세요.")
 
@@ -158,11 +178,25 @@ else:
             st.session_state.answers = {}
             st.session_state.saved = False
             st.rerun()
+        # 이전 답변 복사하여 신규 입력 시작 (날짜는 오늘로, 개인 코멘트는 공백)
+        if st.button("📋 이전 답변 복사하여 신규 매물"):
+            new_answers = {k: v for k, v in zip(csv_columns, row_values)}
+            new_answers["날짜"] = datetime.date.today().isoformat()
+            new_answers["개인 코멘트"] = ""
+            st.session_state.answers = new_answers
+            st.session_state.step = 0
+            st.session_state.saved = False
+            st.rerun()
 
 # ---- CSV 기록 확인 ----
 st.markdown("### 📊 현재 저장된 기록")
 if os.path.isfile(csv_file):
     df_records = pd.read_csv(csv_file)
     st.dataframe(df_records)
+    try:
+        with open(csv_file, "rb") as f:
+            st.download_button("⬇️ CSV 다운로드", f, file_name=csv_file, mime="text/csv")
+    except Exception:
+        pass
 else:
     st.info("아직 기록이 없습니다.")
